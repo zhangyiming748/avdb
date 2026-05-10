@@ -1,11 +1,14 @@
 package soup
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"os/user"
 	"strings"
 	"time"
 
@@ -16,6 +19,30 @@ var (
 	html  = "https://javdb.com/search?q"
 	proxy = "http://127.0.0.1:8889"
 )
+
+// loadCookiesFromDisk 加载磁盘上的 cookies
+func loadCookiesFromDisk() ([]*http.Cookie, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return nil, fmt.Errorf("获取当前用户失败: %w", err)
+	}
+	cookieFilePath := usr.HomeDir + "/cookies.txt"
+
+	// 读取 cookie 文件
+	data, err := os.ReadFile(cookieFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("读取cookie文件失败: %w", err)
+	}
+
+	// 解析 cookies
+	var cookies []*http.Cookie
+	err = json.Unmarshal(data, &cookies)
+	if err != nil {
+		return nil, fmt.Errorf("解析cookie文件失败: %w", err)
+	}
+
+	return cookies, nil
+}
 
 // createProxyClient 创建带代理的 HTTP 客户端
 func createProxyClient(proxyURL string) (*http.Client, error) {
@@ -28,37 +55,63 @@ func createProxyClient(proxyURL string) (*http.Client, error) {
 		Proxy: http.ProxyURL(proxyParsed),
 	}
 
+	// 创建 cookie jar 来持久化 cookie
+	cookieJar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, fmt.Errorf("创建cookie jar失败: %w", err)
+	}
+
 	client := &http.Client{
 		Transport: transport,
 		Timeout:   30 * time.Second,
+		Jar:       cookieJar, // 添加 cookie jar 以持久化 cookie
+	}
+
+	// 尝试加载已存在的 cookies
+	cookies, err := loadCookiesFromDisk()
+	if err == nil && len(cookies) > 0 {
+		// 获取 JavDB 域名
+		targetURL, _ := url.Parse("https://javdb.com")
+		// 将 cookies 添加到 cookie jar
+		cookieJar.SetCookies(targetURL, cookies)
 	}
 
 	return client, nil
 }
 
 func Javdb(keyword string) (string, error) {
-	query := strings.Join([]string{html, keyword}, "=")
-	soup.SetDebug(	true)
-log.Printf("请求的网址为: %v\n",query)
-	// 创建带代理的客户端
+	soup.SetDebug(true)
+	// 创建带代理和 cookie jar 的客户端
 	client, err := createProxyClient(proxy)
 	if err != nil {
 		return "", fmt.Errorf("创建代理客户端失败: %w", err)
 	}
 
-	// 使用自定义客户端发起请求
+	// 直接进行搜索
+	query := strings.Join([]string{html, keyword}, "=")
+	log.Printf("请求的网址为: %v\n", query)
 	resp, err := soup.GetWithClient(query, client)
 	if err != nil {
-		return "", fmt.Errorf("请求失败: %w", err)
+		return "", fmt.Errorf("搜索请求失败: %w", err)
 	}
+
 	//在这里把这次请求到的网址保存为tmp.html文件
-	err = os.WriteFile("tmp.html", []byte(resp), 0644)
+	f, err := os.OpenFile("tmp.html", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		log.Printf("保存HTML文件失败: %v\n", err)
+		log.Printf("打开HTML文件失败: %v\n", err)
+		// 文件操作失败不影响返回结果，继续执行
 	} else {
-		log.Println("HTML已保存到 tmp.html")
+		defer f.Close()
+
+		_, err = f.Write([]byte(resp))
+		if err != nil {
+			log.Printf("写入HTML文件失败: %v\n", err)
+		} else {
+			log.Println("HTML已保存到 tmp.html")
+		}
 	}
 	root := soup.HTMLParse(resp)
 	log.Printf("root is : %v\n", root)
+
 	return resp, nil
 }
