@@ -5,11 +5,11 @@ import (
 )
 
 type AVDB struct {
-	gorm.Model        // 包含 ID, CreatedAt, UpdatedAt, DeletedAt
 	NO         string `gorm:"uniqueIndex;size:64;not null"` // 作品番号，唯一索引
 	Title      string `gorm:"size:2048;not null"`           // 原始标题
 	ZhCnTitle  string `gorm:"size:2048"`                    // 中文标题
 	Pretty     string `gorm:"size:255"`                     // 美化后的显示名称
+	gorm.Model        // 包含 ID, CreatedAt, UpdatedAt, DeletedAt
 }
 
 // Insert 基础插入方法

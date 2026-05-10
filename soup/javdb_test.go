@@ -6,16 +6,22 @@ import (
 	"strings"
 	"testing"
 
+	"avdb/storage"
+	"avdb/param"
 	"github.com/anaskhan96/soup"
 )
 
 func TestJavdb(t *testing.T) {
+	param.InitConfig("C:\\Users\\zhang\\Github\\AVDB\\avdb.ini") // 请根据实际情况修改配置文件路径
+	storage.SetSqlite()
 	result, err := Javdb("OEA-002")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 	}
 	t.Logf("Result: %v", result)
 }
+
+
 func TestParse(t *testing.T) {
 	// 读取HTML文件内容
 	data, err := os.ReadFile("/Users/zen/github/avdb/soup/tmp.html")

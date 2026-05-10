@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"avdb/param"
 	"avdb/storage"
 	"avdb/trans"
 
@@ -134,8 +135,10 @@ func Javdb(keyword string) (string, error) {
 				// 提取标题部分（去掉番号的部分）
 				titleWithoutId := strings.TrimSpace(strings.TrimPrefix(titleText, idNumber))
 				log.Printf("标题: %v\n", titleWithoutId)
-				// 翻译为中文标题
-				zhcnTitle := trans.DeepLX(titleWithoutId,"")
+				// 翻译为中文标题'
+				authorization := param.GetVal("trans", "Authorization")
+				zhcnTitle := trans.DeepLX(titleWithoutId,authorization)
+				log.Printf("中文标题: %v\n", zhcnTitle)
 				pretty := strings.Join([]string{idNumber ,  zhcnTitle}," ")
 				avdb := storage.AVDB{
 					NO:    idNumber,
