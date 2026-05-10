@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"runtime/debug"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -12,6 +14,13 @@ import (
 	"avdb/param"
 	"avdb/soup"
 	"avdb/storage"
+)
+
+// 版本变量，将在构建时注入版本信息
+var (
+	Version   = "dev"
+	BuildTime = "unknown"
+	GitCommit = "unknown"
 )
 
 /*
@@ -30,10 +39,35 @@ func main() {
 
 	// 创建根命令
 	rootCmd := &cobra.Command{
-		Use:   "avdb",
-		Short: "AVDB 是一个成人影片数据库工具",
-		Long:  `AVDB 是一个用于查询和管理成人影片数据的工具`,
+		Use:     "avdb",
+		Short:   "AVDB 是一个成人影片数据库工具",
+		Long:    `AVDB 是一个用于查询和管理成人影片数据的工具`,
+		Version: Version,
 	}
+
+	// 添加版本标志
+	rootCmd.Flags().BoolP("version", "v", false, "显示版本信息")
+	rootCmd.Run = func(cmd *cobra.Command, args []string) {
+		// 如果用户请求版本信息
+		showVersion, _ := cmd.Flags().GetBool("version")
+		if showVersion {
+			PrintVersion()
+			return
+		}
+		// 如果没有子命令且没有请求版本，显示帮助
+		cmd.Help()
+	}
+
+	// 添加 version 子命令
+	versionCmd := &cobra.Command{
+		Use:   "version",
+		Short: "显示版本信息",
+		Long:  `显示 AVDB 的版本信息`,
+		Run: func(cmd *cobra.Command, args []string) {
+			PrintVersion()
+		},
+	}
+	rootCmd.AddCommand(versionCmd)
 
 	// 添加 file 子命令
 	fileCmd := &cobra.Command{
@@ -77,6 +111,29 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+func PrintVersion() {
+	if Version != "dev" {
+		fmt.Printf("AVDB 版本: %s\n", Version)
+		fmt.Printf("构建时间: %s\n", BuildTime)
+		fmt.Printf("Git 提交: %s\n", GitCommit)
+	} else {
+		// 尝试从 runtime/debug 获取版本信息
+		if info, ok := debug.ReadBuildInfo(); ok {
+			fmt.Printf("AVDB 版本: %s (devel)\n", info.Main.Version)
+			for _, setting := range info.Settings {
+				if setting.Key == "vcs.revision" {
+					fmt.Printf("Git 提交: %s\n", setting.Value)
+				} else if setting.Key == "vcs.time" {
+					fmt.Printf("构建时间: %s\n", setting.Value)
+				}
+			}
+		} else {
+			fmt.Printf("AVDB 版本: %s\n", Version)
+		}
+	}
+}
+
 func SetLog(l string) {
 	// 设置全局时区为Asia/Shanghai
 	location, err := time.LoadLocation("Asia/Shanghai")
