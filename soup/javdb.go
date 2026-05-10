@@ -15,6 +15,7 @@ import (
 	"avdb/param"
 	"avdb/storage"
 	"avdb/trans"
+	"avdb/util"
 
 	"github.com/anaskhan96/soup"
 )
@@ -82,7 +83,7 @@ func createProxyClient(proxyURL string) (*http.Client, error) {
 	return client, nil
 }
 
-func Javdb(keyword string) (string, error) {
+func Javdb(keyword string) (dst string, err error) {
 	//soup.SetDebug(true)
 	// 创建带代理和 cookie jar 的客户端
 	client, err := createProxyClient(proxy)
@@ -137,14 +138,17 @@ func Javdb(keyword string) (string, error) {
 				log.Printf("标题: %v\n", titleWithoutId)
 				// 翻译为中文标题'
 				authorization := param.GetVal("trans", "Authorization")
-				zhcnTitle := trans.DeepLX(titleWithoutId,authorization)
+				zhcnTitle := trans.DeepLX(titleWithoutId, authorization)
 				log.Printf("中文标题: %v\n", zhcnTitle)
-				pretty := strings.Join([]string{idNumber ,  zhcnTitle}," ")
+				pretty := strings.Join([]string{idNumber, zhcnTitle}, " ")
+				if i == 0 {
+					dst = pretty
+				}
 				avdb := storage.AVDB{
-					NO:    idNumber,
-					Title: titleWithoutId,
+					NO:        idNumber,
+					Title:     titleWithoutId,
 					ZhCnTitle: zhcnTitle,
-					Pretty: pretty,
+					Pretty:    pretty,
 				}
 				log.Printf("准备插入数据库的AVDB: %+v\n", avdb)
 				err := avdb.Insert()
@@ -160,5 +164,47 @@ func Javdb(keyword string) (string, error) {
 			log.Printf("未找到 video-title 元素\n")
 		}
 	}
-	return "", nil
+	return dst, nil
+}
+
+func SearchByJavdb(src, dst string) (string, error) {
+	// 首先判断dst是一个目录还是文件
+	//如果是文件形式 即使这个文件不存在 直接用作输出文件，覆盖写入
+	//如果是目录 就在这个目录下新建一个export.txt作为输出文件
+	info, err := os.Stat(dst)
+	var outputPath string
+	if err != nil {
+		// 如果路径不存在，将其视为文件路径
+		if os.IsNotExist(err) {
+			// 确保父目录存在
+			parentDir := filepath.Dir(dst)
+			err = os.MkdirAll(parentDir, 0755)
+			if err != nil {
+				return "", fmt.Errorf("创建目录失败: %w", err)
+			}
+			outputPath = dst
+		} else {
+			return "", fmt.Errorf("检查路径失败: %w", err)
+		}
+	} else {
+		if info.IsDir() {
+			// 如果dst是目录，则在该目录下创建export.txt文件
+			outputPath = filepath.Join(dst, "export.txt")
+		} else {
+			// 如果dst是文件，则直接使用该文件
+			outputPath = dst
+		}
+	}
+
+	keys := util.ReadByLine(src)
+	s := []string{}
+	for _, keyword := range keys {
+		if pretty, err := Javdb(keyword); err == nil {
+			s = append(s, pretty)
+		} else {
+			log.Printf("搜索 %v 失败: %v\n", keyword, err)
+		}
+	}
+	util.WriteByLine(outputPath, s)
+	return outputPath, nil
 }
