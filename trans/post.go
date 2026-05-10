@@ -7,9 +7,6 @@ import (
 	"net/http"
 )
 
-
-
-
 func HttpPostJson(addHeaders map[string]string, data interface{}, urlPath string) (body []byte, err error) {
 	bytesData, err := json.Marshal(data)
 	if err != nil {

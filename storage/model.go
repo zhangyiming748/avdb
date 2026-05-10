@@ -17,7 +17,6 @@ func (avdb *AVDB) Insert() error {
 	return GetSqlite().Create(avdb).Error
 }
 
-
 // Update 更新指定字段
 func (avdb *AVDB) Update(values interface{}) error {
 	return GetSqlite().Model(avdb).Updates(values).Error

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anaskhan96/soup"
 	"avdb/storage"
+	"github.com/anaskhan96/soup"
 )
 
 var (
@@ -27,7 +27,7 @@ func loadCookiesFromDisk() ([]*http.Cookie, error) {
 	if err != nil {
 		return nil, fmt.Errorf("获取当前用户失败: %w", err)
 	}
-	cookieFilePath := filepath.Join(home,"javdb.cookie")
+	cookieFilePath := filepath.Join(home, "javdb.cookie")
 	// 读取 cookie 文件
 	data, err := os.ReadFile(cookieFilePath)
 	if err != nil {
@@ -112,7 +112,7 @@ func Javdb(keyword string) (string, error) {
 	}
 	root := soup.HTMLParse(resp)
 	//log.Printf("root is : %v\n", root)
-//<div class="item">
+	//<div class="item">
 	items := root.FindAll("div", "class", "item")
 	log.Printf("found %d items\n", len(items))
 	for i, item := range items {
@@ -133,7 +133,7 @@ func Javdb(keyword string) (string, error) {
 				titleWithoutId := strings.TrimSpace(strings.TrimPrefix(titleText, idNumber))
 				log.Printf("标题: %v\n", titleWithoutId)
 				avdb := storage.AVDB{
-					NO: idNumber,
+					NO:    idNumber,
 					Title: titleWithoutId,
 				}
 				log.Printf("准备插入数据库的AVDB: %+v\n", avdb)
