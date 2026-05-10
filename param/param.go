@@ -1,12 +1,13 @@
 package param
 
-
-import(
+import (
 	"github.com/zhangyiming748/goini"
 )
+
 var (
-	conf    *goini.Config
+	conf *goini.Config
 )
+
 func InitConfig(configPath string) {
 	conf = goini.SetConfig(configPath)
 }
