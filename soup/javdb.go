@@ -8,7 +8,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
-	"os/user"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,12 +22,11 @@ var (
 
 // loadCookiesFromDisk 加载磁盘上的 cookies
 func loadCookiesFromDisk() ([]*http.Cookie, error) {
-	usr, err := user.Current()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("获取当前用户失败: %w", err)
 	}
-	cookieFilePath := usr.HomeDir + "/cookies.txt"
-
+	cookieFilePath := filepath.Join(home,"javdb.cookie")
 	// 读取 cookie 文件
 	data, err := os.ReadFile(cookieFilePath)
 	if err != nil {
